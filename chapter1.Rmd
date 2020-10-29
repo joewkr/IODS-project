@@ -1,7 +1,21 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
+
+This is an introductory course on open data science which intends to teach students the modern approaches in reproducible research.
+The main tool in this course is the **R** programming language, a *de-facto* standard in the statistical research and processing applicatinos.
+Moreover, modern best practices in research suggest sharing not only the final result of the study by make it in a easy-to-reproduce way.
+For studies perfromed mainly with the R language this could be achieved by using the **Rmarkdown** format for reportimg.
+Rmarkdown includes both the R source code, explanations and comments in formatted text form as well as the output of the R code.
+One of the goals of this course is to show the students how to utilise these powerful instruments in the best way and encourage them to apply these techniques in their research.
+
+My personal expectations from this course are quite high.
+I hope I would be able to get a bit of fluency in R and apply some of the covered approaches in my research.
+
+The project repository: <https://github.com/joewkr/IODS-project>
+
+<!--
+ *Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
 
 ```{r}
 # This is a so-called "R chunk" where you can write R code.
@@ -10,4 +24,5 @@ date()
 
 ```
 The text continues here.
+-->
 
