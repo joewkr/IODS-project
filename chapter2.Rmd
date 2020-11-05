@@ -1,13 +1,127 @@
-# Insert chapter 2 title here
-
-*Describe the work you have done this week and summarize your learning.*
-
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
-
-```{r}
-date()
+# Regression and model validation
+```{r, include=FALSE}
+# Load all the libraries, but do not show them in the rendered version
+library(GGally)
+library(ggplot2)
+library(gridExtra)
 ```
 
-Here we go again...
+*A short summary and things learned*
+
+- In the exercise we investigate data from a survey taken by students of a statistics course
+- We study how to prepare and explore data sets in R
+- For deeper understanding of the data set structure we build a linear model predicting the grade on the final exam
+- Quality assessment of the obtained model is given a special attention
+
+First of all, we load the data set which we are going to work with.
+This is a preporcessed data set which provides information about the survey taken by students of a statistics course and it also includes the grades received after the course.
+
+```{r}
+learning2014 <- read.csv('learning2014.csv')
+dim(learning2014)
+```
+
+```{r, include=FALSE}
+sizes <- dim(learning2014)
+```
+
+This data set provides information about `r sizes[1]` students for `r sizes[2]` available parameters.
+These parameters include student's age and gender, general attitude towards statistics, their replies to survey questions combined in a four categories, and the total number of points obtained during the final exam of the course.
+Structure of the data set and a sample subset could be obtained with the following command:
+```{r}
+str(learning2014)
+```
+
+For a general quick overview of the data set we could use the `pairs` function to generate a simple scatter plot figure comparing all the variables against each other.
+
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+pairs(learning2014)
+```
+The `points` column is of primary interest for us because it provides information about student grades on the exam.
+As can be seen from the figure there is no easy to spot dependency between exam points and other variables except the `attitude`.
+The `age` column seems to have some interesting features as well, though less pronounced.
+The majority of students was in their twenties as can will be evident from the estimated distribution function introduced further down in the text.
+And this big group of students received all the possible grades from very low to high.
+But if we focus on the older student we could see that for them there seems to be negative correlation between their age and points received at the exam.
+
+To get a more clear overview of dependencies between different variables it is often useful to have also some numerical measure, for example, correlation coefficient to complement scatter plots.
+Here we calculate correlations between all the numeric variables in the data set:
+
+```{r}
+numeric_columns <- tail(names(learning2014))
+cor(learning2014[numeric_columns])
+```
+The correlation matrix shows that students which planned to not get too deep into the topic of the course (i.e. the students with high `surf` score) tend to receive lower grades on the exam.
+Surprisingly, the students whom indicate in their surveys that they strive to get deeper understanding of the topic (high score in the `deep` group) did not show better (or worse) exam grades than other student groups.
+Except the students with high general attitude towards statistics, only the students which tend to use systematic and organized approach to studying (high `stra` score) were able to get better scores on the final exam.
+
+Another insight on the data set could be obtained from the estimated distributions of the numerical variables:
+```{r, fig.align='center', fig.width = 6, fig.asp = 2.0}
+i <- 1
+for(c in tail(names(learning2014))) {
+  p <- ggally_densityDiag(learning2014, mapping = aes_string(x=c)) + 
+       theme_bw() +  
+       theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=0.25)
+  
+  var_name <- paste('p', i, sep='')
+  assign(var_name, p)
+  i <- i + 1
+}
+
+grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 6)
+```
+There it is clear that the majority of students taken the survey are around 20 year old and there is not too many older students in the group.
+Distributions for the `surf` and `deep` scores show somewhat opposite picture with `surf` tending to have lower values and `deep` -- higher.
+I guess to some extent this could be caused by the human factor since the questions in the `deep` group tend to represent a *good* student while questions in the `surf` group describe a *somewhat lazy* person.
+Also an interesting observation there is less probability of getting 13...15 points on the exam than nearby values which could be caused by some peculiarities of the grading system.
+
+Finally we could provide the overall summary of the data set which supports the earlier observations:
+```{r}
+summary(learning2014)
+```
+
+So, which variables could be used to build a linear model for predicting the exam grade?
+Obviously, attitude should be included since it shows the highest correlation with the exam points.
+But both `deep` and `surf` groups seem to be influenced by human factor making them less applicable for this modeling exercise, unlike the `stra` group (which also has the second-highest correlation with the exam points).
+Therefore for building the model we take `attitude`, `stra` and `age` since it shows some interesting features for the older students.
+
+```{r}
+model <- lm(points ~ attitude + stra + age, data = learning2014)
+summary(model)
+```
+The summary information of the fitted model provides basic overview about the fitted model and gives important information about the statistical significance of the assumed dependency between the target and explanatory variables.
+For each of the explanatory variables the significance test provides probability of getting the observed values of the target variable if the explanatory variable in question is has random values.
+As a consequence, when the p-value is high it is less likely that target variable depends on that explanatory variable.
+For our model, only the `attitude` parameter shows very low p-value of `r format(summary(model)$coefficients[14], digits=3)` which indicates strong and significant dependency between the exam point and students attitude.
+The other two explanatory variables `stra` and `age`, with p-values of `r format(summary(model)$coefficients[15], digits=3)` and `r format(summary(model)$coefficients[16], digits=3)` though still significant assuming the significance level $\alpha$ = 0.10 show much weaker connection between them and the target variable.
+
+The obtained linear model which is written as:
+
+$$
+\text{points} = `r format(summary(model)$coefficients[1], digits=4)` + `r format(summary(model)$coefficients[2], digits=4)`\cdot\text{attitude} + `r format(summary(model)$coefficients[3], digits=4)`\cdot\text{stra}  `r format(summary(model)$coefficients[4], digits=4)`\cdot\text{age}
+$$
+shows that with higher `attitude` and `stra` scores, students would tend getting higher final exam grade.
+Although for the older students the negative `age` coefficient indicates that these students tend to have lower final exam grade than younger students with the same `attitude` and `stra` scores.
+
+Another important parameters provided in the summary of our model is the multiple R-squared value which shows how good is the fit of our model.
+The low value of the multiple R-squared parameter indicate that only about the 20% of variation in the exam grades could be explained by the selected set of explanatory variables.
+However, this parameter does not indicate whether the selected set of the explanatory variables is optimal or not.
+
+To estimate how good the assumptions taken when fitting the linear model hold we use the following series of diagnostic plots:
+```{r, fig.align='center', fig.width = 6, fig.asp = 2.0}
+par(mfrow=c(3,1))
+plot(model, which=c(1,2,5))
+```
+There the 'Residuals vs Fitted' plot shows the dependency between the fitted model values and residuals calculated as a difference between the observed values and fitted.
+A sound model should show no clear dependency between the residuals and fitted values.
+The produced model seems to have reasonable residuals which are more or less evenly distributed across the range of fitted values.
+Although the worrying point there is the clusters of 35, 56 and 145 points having very close residual values.
+
+The same pattern could observed on the 'Normal Q-Q' plot as well.
+This plot indicates how well the assumption of normal distribution of the residuals is held (ideally the points should lay on the 1:1 line there).
+Again on a seemingly reasonable plot the clusters of points holding the same value indicate potential issues with the model.
+
+Finally, the 'Residuals vs Leverage' plot shows how much weight is given to individual observations when fitting the model.
+For a well-defined model this plot should not show outlier points with high leverage values.
+Our model seems to fit reasonably well under this assumption, though it still shows a cluster of 56 points.
+But this cluster has a relatively low leverage value thus making it a bit less of an issue.
