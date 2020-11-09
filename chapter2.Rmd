@@ -115,13 +115,13 @@ plot(model, which=c(1,2,5))
 There the 'Residuals vs Fitted' plot shows the dependency between the fitted model values and residuals calculated as a difference between the observed values and fitted.
 A sound model should show no clear dependency between the residuals and fitted values.
 The produced model seems to have reasonable residuals which are more or less evenly distributed across the range of fitted values.
-Although the worrying point there is the clusters of 35, 56 and 145 points having very close residual values.
+Although the worrying point there is the cluster of numbered points (35, 56 and 145) having somewhat larger residual values.
 
 The same pattern could observed on the 'Normal Q-Q' plot as well.
 This plot indicates how well the assumption of normal distribution of the residuals is held (ideally the points should lay on the 1:1 line there).
-Again on a seemingly reasonable plot the clusters of points holding the same value indicate potential issues with the model.
+Again on a seemingly reasonable plot the cluster of numbered points could indicate potential issues with the model.
 
 Finally, the 'Residuals vs Leverage' plot shows how much weight is given to individual observations when fitting the model.
 For a well-defined model this plot should not show outlier points with high leverage values.
-Our model seems to fit reasonably well under this assumption, though it still shows a cluster of 56 points.
-But this cluster has a relatively low leverage value thus making it a bit less of an issue.
+Our model seems to fit reasonably well under this assumption, though it still shows some numbered points.
+But these points have a relatively low leverage value thus making it a bit less of an issue.
