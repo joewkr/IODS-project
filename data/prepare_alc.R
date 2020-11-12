@@ -5,7 +5,12 @@
 library(dplyr)
 
 input_mat <- read.table('data/student-mat.csv', sep=';', header=TRUE)
+dim(input_mat)
+str(input_mat)
+
 input_por <- read.table('data/student-por.csv', sep=';', header=TRUE)
+dim(input_por)
+str(input_por)
 
 # List of variables for joining two data sets
 join_by <- c(
