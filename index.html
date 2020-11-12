@@ -462,7 +462,7 @@ date()
 ```
 
 ```
-## [1] "Thu Nov 12 13:53:46 2020"
+## [1] "Thu Nov 12 16:52:20 2020"
 ```
 The text continues here.
 -->
@@ -576,13 +576,13 @@ plot(model, which=c(1,2,5))</code></pre>
 <h1>Logistic regression</h1>
 <p><em>A short summary and things learned</em></p>
 <ul>
-<li>In the exercise we use the information about students of two Portuguese schools to build a statistical model for predicting high alcohol consumption rate</li>
+<li>In the exercise we use the information about students of two Portuguese schools to build a statistical model for predicting which students would show high alcohol consumption</li>
 <li>For modeling a binary target variable we use logistic regression</li>
 <li>Model quality is assessed by investigating prediction and training errors</li>
-<li>In attempt to find a better set of explanatory variables we use a set of randomly selected models to minimize the prediction error</li>
+<li>In attempt to find a better set of explanatory variables we probe randomly selected models to minimize the prediction error</li>
 </ul>
 <p>Again, before we start the analysis we load the data set from the file system. This data set provides information about students of two Portuguese schools and their achievements. It contains received grades (variables <code>G1</code>, <code>G2</code> and <code>G3</code>) as well as students background including social and school-related information. The original data set could be obtained via the following link <a href="https://archive.ics.uci.edu/ml/datasets/Student+Performance" class="uri">https://archive.ics.uci.edu/ml/datasets/Student+Performance</a> and detailed description of the data set variables is also provided. Although the original data set was provided separately for two subjects: Mathematics and Portuguese language, in the current study a preprocessed data set is used. Ths data set is obtained by merging the original data sets.</p>
-<p>Variables in the perprocessed data set could be shown vy applying the <code>names</code> function to the loaded data frame:</p>
+<p>Variables in the perprocessed data set could be shown by applying the <code>names</code> function to the loaded data frame:</p>
 <pre class="r"><code>alc &lt;- read.csv(&#39;alc.csv&#39;)
 dim(alc)</code></pre>
 <pre><code>## [1] 382  35</code></pre>
@@ -594,10 +594,10 @@ dim(alc)</code></pre>
 ## [21] &quot;activities&quot; &quot;higher&quot;     &quot;romantic&quot;   &quot;famrel&quot;     &quot;freetime&quot;  
 ## [26] &quot;goout&quot;      &quot;Dalc&quot;       &quot;Walc&quot;       &quot;health&quot;     &quot;absences&quot;  
 ## [31] &quot;G1&quot;         &quot;G2&quot;         &quot;G3&quot;         &quot;alc_use&quot;    &quot;high_use&quot;</code></pre>
-<p>As could be seen from the output this data set introduces two additional variables, namely <code>alc_use</code> which is a simple mean of <code>Dalc</code> and <code>Walc</code>, and <code>high_use</code> which indicates relatively high alcohol consumption by a student and defined to be TRUE when <code>alc_use</code> takes values greater than the threshold value of <code>2</code>.</p>
+<p>As could be seen from the output, this data set introduces two additional variables, namely <code>alc_use</code> which is a simple mean of <code>Dalc</code> and <code>Walc</code>, and <code>high_use</code> which indicates relatively high alcohol consumption by a student and defined to be TRUE when <code>alc_use</code> takes values greater than the threshold value of <code>2</code>.</p>
 <p>Since the data set provides quite extensive information about students it could be possible to build a statistical model predicting high alcohol consumption based on these data. For this study I choose the four following variables:</p>
 <pre class="r"><code>selected_columns &lt;- c(&#39;famrel&#39;, &#39;studytime&#39;, &#39;absences&#39;, &#39;goout&#39;)</code></pre>
-<p>where <code>famrel</code> describes quality of student’s family relationships (with higher values corresponding to better relationships), <code>studitime</code> describes how much time students spends on their studies over a week, <code>absences</code> descries the number of times when a student was absent from school, and <code>goout</code> describes how often a students goes out with friends.</p>
+<p>where <code>famrel</code> describes quality of student’s family relationships (with higher values corresponding to better relationships), <code>studytime</code> describes how much time students spends on their studies over a week, <code>absences</code> descries the number of times when a student was absent from school, and <code>goout</code> describes how often a students goes out with friends.</p>
 <p>I expect these variables to be connected to the alcohol consumption since it would be natural to assume that a person with bad family relationships who does not spend too much time studying, often absent and going out with friends would show higher alcohol consumption.</p>
 <p>To get a better overview of the selected variables and study their possible connection to the alchol consumption a graphical summary could be of a great help.</p>
 <pre class="r"><code>alc %&gt;% 
@@ -633,7 +633,7 @@ ggplot(aes(value, fill=high_use)) +
 ## high_use   1   2   3   4   5
 ##    FALSE  19  84 103  41  21
 ##    TRUE    3  16  23  40  32</code></pre>
-<p>To predict the high alcohol consumption based on the selected variables a logistical model could applied:</p>
+<p>To predict the high alcohol consumption based on the selected variables a logistical model could be applied:</p>
 <pre class="r"><code>f_string &lt;- paste(&#39;high_use ~ &#39;, paste(selected_columns, collapse = &#39; + &#39;))
 model &lt;- glm(as.formula(f_string), data = alc, family = &quot;binomial&quot;)
 summary(model)</code></pre>
@@ -662,7 +662,7 @@ summary(model)</code></pre>
 ## AIC: 394.07
 ## 
 ## Number of Fisher Scoring iterations: 4</code></pre>
-<p>summary of the trained model indicate that all the selected predictors have statistically significant relation with the target variable <code>high_use</code> taking the significance level <span class="math inline">\(\alpha = 0.05\)</span>. Coefficients of the model suggest that <code>absences</code> has the weakest connection with the target variable whereas the other selected explanatory variables show a more strong link.</p>
+<p>Summary of the trained model indicate that all the selected predictors have statistically significant relations with the target variable <code>high_use</code> taking the significance level <span class="math inline">\(\alpha = 0.05\)</span>. Coefficients of the model suggest that <code>absences</code> has the weakest connection with the target variable whereas the other selected explanatory variables show a more strong link.</p>
 <p>A bit more insight on the characteristics of the obtained model could be learned by studying the coefficients in form of odd ratios and providing their confidence intervals:</p>
 <pre class="r"><code>odds_ratio &lt;- model %&gt;% coef    %&gt;% exp
 confidence &lt;- model %&gt;% confint %&gt;% exp</code></pre>
@@ -675,7 +675,7 @@ confidence &lt;- model %&gt;% confint %&gt;% exp</code></pre>
 ## absences     1.0698631 1.02591583 1.1187950
 ## goout        2.1372720 1.69853389 2.7261579</code></pre>
 <p>this table shows that for <code>famrel</code> and <code>studytime</code> odds ratios are below one (namely, 0.714 and 0.576) which means that increasing these parameters would decrease the probability of student being a drinker. Contrary, the odds ratios for <code>absences</code> and <code>goout</code> are above one thus increasing these parameters would increase the probability of high alcohol consumption by a student. Another important observation from this table is that the confidence intervals for all the odds ratios do not include 1 meaning that these odds ratios are significant. This is true also for the <code>absences</code> variable which has the odds ratio of 1.07, which is rather close to 1 but still significant.</p>
-<p>To investigate the predictive power of our model it could be used to estimate the probability of high alcohol consumption from the same data set which was applied to train the model. To do so, the <code>predict</code> function can be used and if the resulting probability if higher than 0.5 a student is assumed to be a drinker. This information combined with the actual data on alcohol consumption allows generating the cross tabulation of predicted vs actual values:</p>
+<p>To investigate the predictive power of our model it could be used to estimate the probability of high alcohol consumption from the same data set which was applied to train the model. To do so, the <code>predict</code> function can be used and if the resulting probability is higher than 0.5 a student is assumed to be a drinker. This information combined with the actual data on alcohol consumption allows generating the cross tabulation of predicted vs actual values:</p>
 <pre class="r"><code>probabilities &lt;- predict(model, type = &quot;response&quot;)
 alc &lt;- alc %&gt;% mutate(probability = probabilities, prediction = probability &gt; 0.5)
 
@@ -703,15 +703,15 @@ ggplot(aes(x = probability, y = high_use)) +
 loss_func(class = alc$high_use, prob = alc$probability)</code></pre>
 <pre><code>## [1] 0.2382199</code></pre>
 <p>which gives a value of 0.238 meaning that about a quarter of the predictions were incorrect.</p>
-<p>Such an approach which uses the whole data set to train a model and the to test it, though simple and straightforward, gives a biased estimates of model quality because all the data points which are used for testing are already ‘known’ to the model since they were used for training. A more robust approach takes only a part of the data set for training the model and keeps a part of it for testing. This approach is applied in the <code>cv.glm</code> function which estimates the model prediction error in presence of unknown observations. There the data set is divided into 10 chunks and only 9 of them are used for model training when the last one is used for validation. This procedure is repeated for all combinations of training and validation chunks returning a K-fold cross-validation prediction error.</p>
+<p>Such an approach which uses the whole data set to train a model and the to test it, though simple and straightforward, gives a biased estimate of model quality because all the data points which are used for testing are already ‘known’ to the model since they were used for training. A more robust approach takes only a part of the data set for training the model and keeps a part of it for testing. This approach is applied in the <code>cv.glm</code> function which estimates the model prediction error in presence of unknown observations. There the data set is divided into 10 chunks and only 9 of them are used for model training when the last one is used for validation. This procedure is repeated for all combinations of training and validation chunks returning a K-fold cross-validation prediction error.</p>
 <pre class="r"><code>cv &lt;- cv.glm(data = alc, cost = loss_func, glmfit = model, K = 10)
 cv$delta[1]</code></pre>
 <pre><code>## [1] 0.2434555</code></pre>
-<p>For the model built in the current exercise the cross-validation procedure gives the prediction error of 0.243 which is higher than the previous estimate because it use unknown to the model data for validation. This error is lower than the error of the example model (it use the following formula: <code>high_use ~ sex + failures + absences</code>) given for this course which was about 0.26.</p>
+<p>For the model built in the current exercise the cross-validation procedure gives the prediction error of 0.243 which is higher than the previous estimate because it uses unknown to the model data for validation. This error is lower than the error of the example model (it uses the following formula: <code>high_use ~ sex + failures + absences</code>) given for this course which was about 0.26.</p>
 <p>But giving a relatively big number of potential explanatory variables it is not a straightforward task to select the best set for building a model. A naïve solution would be testing all the possible combinations of the explanatory variables and taking a model which gives the lowest prediction error. The problem is that for a data set with 34 free parameters the number of possible combinations of explanatory variables would be:</p>
 <p><span class="math display">\[
 C = \sum_r^{34} \frac{34!}{r!\cdot(34 - r)!} \equiv 1.7179869\times 10^{10}
-\]</span> which is rather impractical. But to assess the properties of models build with different explanatory variables only a minor fraction of all possible combinations would suffice. Therefore to investigate the models built with different combinations of different number of explanatory variables the following approach is applied. For each size of the explanatory vector a random selection of the explanatory variables is used to train a model and obtain the model training and prediction errors. This procedure is repeated <code>N</code> times for each explanatory vector size to get multiple model realizations. For each model the model formula, size of the explanatory vector, prediction and training errors are stored in the data frame for the following analysis.</p>
+\]</span> which renders this idea rather impractical. But to assess the properties of models built with different explanatory variables using only a minor fraction of all possible combinations would suffice. Therefore to investigate the models built with various combinations of different number of explanatory variables the following approach is applied. For each size of the explanatory vector a random selection of the explanatory variables is used to train a model and obtain the model training and prediction errors. This procedure is repeated <code>N</code> times for each explanatory vector size to get multiple model realizations. For each model the model formula, size of the explanatory vector, prediction and training errors are stored in the final data frame for the following analysis.</p>
 <pre class="r"><code>possible_predictors &lt;- head(names(alc), n = -3)
 possible_predictors &lt;- possible_predictors[! possible_predictors %in% c(&#39;Walc&#39;, &#39;Dalc&#39;, &#39;alc_use&#39;)]
 
@@ -756,7 +756,7 @@ for(i in 30:1) {
     }
   }
 }</code></pre>
-<p>As could be seen from the summary figure, the model errors tend become smaller with increasing the size of the explanatory vector (there <code>training</code> indicates training errors if TRUE and prediction errors if FALSE). This could be attributed to the non-totality of the selected approach which makes it easier to draw a set of ‘bad’ variables if the explanatory vector is short. From the other size for long explanatory vectors there is a higher probability of getting ‘good’ variables from a random draw.</p>
+<p>As could be seen from the summary figure, the model errors tend to become smaller with increasing the size of the explanatory vector (there <code>training</code> indicates training errors if TRUE and prediction errors if FALSE). This could be attributed to the non-totality of the selected approach which makes it easier to draw a set of ‘bad’ variables if the explanatory vector is short. From the other side for long explanatory vectors there is a higher probability of getting ‘good’ variables from a random draw.</p>
 <pre class="r"><code>mdf$size &lt;- as.factor(mdf$size)
 mdf %&gt;% 
 ggplot(aes(x = size, y = error, col=training)) + 
@@ -772,7 +772,7 @@ ggplot(aes(x = size, y = error, col=training)) +
 ##                                                                                                   model
 ## 1 high_use ~  activities+Mjob+internet+studytime+absences+paid+sex+reason+nursery+Fedu+age+goout+higher
 ## 2                               high_use ~  reason+G2+activities+famsup+absences+sex+goout+Medu+nursery</code></pre>
-<p>The model with the the lowest prediction error (there the model with fewer explanatory variables was taken) shows some improvement in the prediction skill though still tend to give a considerable amount of false negative predictions according to the provided summary:</p>
+<p>The model with the the lowest prediction error (there the model with fewer explanatory variables was taken) shows some improvement in the prediction skill though still tends to give a considerable amount of false negative predictions according to the provided summary:</p>
 <pre class="r"><code>best_score &lt;- mdf[mdf$training == FALSE,] %&gt;% slice_min(error)
 best_formula &lt;- as.formula(best_score$model[2])
 better_model &lt;- glm(as.formula(best_formula), data = alc, family = &quot;binomial&quot;)

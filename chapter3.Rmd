@@ -14,10 +14,10 @@ set.seed(177)
 
 *A short summary and things learned*
 
-- In the exercise we use the information about students of two Portuguese schools to build a statistical model for predicting high alcohol consumption rate
+- In the exercise we use the information about students of two Portuguese schools to build a statistical model for predicting which students would show high alcohol consumption
 - For modeling a binary target variable we use logistic regression
 - Model quality is assessed by investigating prediction and training errors
-- In attempt to find a better set of explanatory variables we use a set of randomly selected models to minimize the prediction error
+- In attempt to find a better set of explanatory variables we probe randomly selected models to minimize the prediction error
 
 Again, before we start the analysis we load the data set from the file system.
 This data set provides information about students of two Portuguese schools and their achievements.
@@ -26,13 +26,13 @@ The original data set could be obtained via the following link <https://archive.
 Although the original data set was provided separately for two subjects: Mathematics and Portuguese language, in the current study a preprocessed data set is used.
 Ths data set is obtained by merging the original data sets.
 
-Variables in the perprocessed data set could be shown vy applying the `names` function to the loaded data frame:
+Variables in the perprocessed data set could be shown by applying the `names` function to the loaded data frame:
 ```{r}
 alc <- read.csv('alc.csv')
 dim(alc)
 names(alc)
 ```
-As could be seen from the output this data set introduces two additional variables, namely `alc_use` which is a simple mean of `Dalc` and `Walc`, and `high_use` which indicates relatively high alcohol consumption by a student and defined to be `r TRUE` when `alc_use` takes values greater than the threshold value of `2`.
+As could be seen from the output, this data set introduces two additional variables, namely `alc_use` which is a simple mean of `Dalc` and `Walc`, and `high_use` which indicates relatively high alcohol consumption by a student and defined to be `r TRUE` when `alc_use` takes values greater than the threshold value of `2`.
 
 Since the data set provides quite extensive information about students it could be possible to build a statistical model predicting high alcohol consumption based on these data.
 For this study I choose the four following variables:
@@ -40,7 +40,7 @@ For this study I choose the four following variables:
 selected_columns <- c('famrel', 'studytime', 'absences', 'goout')
 ```
 
-where `famrel` describes quality of student's family relationships (with higher values corresponding to better relationships), `studitime` describes how much time students spends on their studies over a week, `absences` descries the number of times when a student was absent from school, and `goout` describes how often a students goes out with friends.
+where `famrel` describes quality of student's family relationships (with higher values corresponding to better relationships), `studytime` describes how much time students spends on their studies over a week, `absences` descries the number of times when a student was absent from school, and `goout` describes how often a students goes out with friends.
 
 I expect these variables to be connected to the alcohol consumption since it would be natural to assume that a person with bad family relationships who does not spend too much time studying, often absent and going out with friends would show higher alcohol consumption.
 
@@ -70,14 +70,14 @@ for(var in selected_columns) {
 ```
 
 
-To predict the high alcohol consumption based on the selected variables a logistical model could applied:
+To predict the high alcohol consumption based on the selected variables a logistical model could be applied:
 ```{r}
 f_string <- paste('high_use ~ ', paste(selected_columns, collapse = ' + '))
 model <- glm(as.formula(f_string), data = alc, family = "binomial")
 summary(model)
 ```
 
-summary of the trained model indicate that all the selected predictors have statistically significant relation with the target variable `high_use` taking the significance level $\alpha = 0.05$.
+Summary of the trained model indicate that all the selected predictors have statistically significant relations with the target variable `high_use` taking the significance level $\alpha = 0.05$.
 Coefficients of the model suggest that `absences` has the weakest connection with the target variable whereas the other selected explanatory variables show a more strong link.
 
 A bit more insight on the characteristics of the obtained model could be learned by studying the coefficients in form of odd ratios and providing their confidence intervals:
@@ -94,7 +94,7 @@ Another important observation from this table is that the confidence intervals f
 This is true also for the `absences` variable which has the odds ratio of `r format(odds_ratio['absences'], digits=3)`, which is rather close to 1 but still significant.
 
 To investigate the predictive power of our model it could be used to estimate the probability of high alcohol consumption from the same data set which was applied to train the model.
-To do so, the `predict` function can be used and if the resulting probability if higher than 0.5 a student is assumed to be a drinker.
+To do so, the `predict` function can be used and if the resulting probability is higher than 0.5 a student is assumed to be a drinker.
 This information combined with the actual data on alcohol consumption allows generating the cross tabulation of predicted vs actual values:
 ```{r}
 probabilities <- predict(model, type = "response")
@@ -134,7 +134,7 @@ model_training_error <- loss_func(class = alc$high_use, prob = alc$probability)
 
 which gives a value of `r format(model_training_error, digits=3)` meaning that about a quarter of the predictions were incorrect.
 
-Such an approach which uses the whole data set to train a model and the to test it, though simple and straightforward, gives a biased estimates of model quality because all the data points which are used for testing are already 'known' to the model since they were used for training.
+Such an approach which uses the whole data set to train a model and the to test it, though simple and straightforward, gives a biased estimate of model quality because all the data points which are used for testing are already 'known' to the model since they were used for training.
 A more robust approach takes only a part of the data set for training the model and keeps a part of it for testing.
 This approach is applied in the `cv.glm` function which estimates the model prediction error in presence of unknown observations.
 There the data set is divided into 10 chunks and only 9 of them are used for model training when the last one is used for validation.
@@ -144,8 +144,8 @@ cv <- cv.glm(data = alc, cost = loss_func, glmfit = model, K = 10)
 cv$delta[1]
 ```
 
-For the model built in the current exercise the cross-validation procedure gives the prediction error of `r format(cv$delta[1], digits=3)` which is higher than the previous estimate because it use unknown to the model data for validation.
-This error is lower than the error of the example model (it use the following formula: `high_use ~ sex + failures + absences`) given for this course which was about 0.26.
+For the model built in the current exercise the cross-validation procedure gives the prediction error of `r format(cv$delta[1], digits=3)` which is higher than the previous estimate because it uses unknown to the model data for validation.
+This error is lower than the error of the example model (it uses the following formula: `high_use ~ sex + failures + absences`) given for this course which was about 0.26.
 
 But giving a relatively big number of potential explanatory variables it is not a straightforward task to select the best set for building a model.
 A naïve solution would be testing all the possible combinations of the explanatory variables and taking a model which gives the lowest prediction error.
@@ -154,12 +154,12 @@ The problem is that for a data set with `r dim(alc)[2] - 3` free parameters the 
 $$
 C = \sum_r^{`r dim(alc)[2] - 3`} \frac{`r dim(alc)[2] - 3`!}{r!\cdot(`r dim(alc)[2] - 3` - r)!} \equiv `r sum(factorial(34)/(factorial(1:34)*factorial(34 - 1:34)))`
 $$
-which is rather impractical.
-But to assess the properties of models build with different explanatory variables only a minor fraction of all possible combinations would suffice.
-Therefore to investigate the models built with different combinations of different number of explanatory variables the following approach is applied.
+which renders this idea rather impractical.
+But to assess the properties of models built with different explanatory variables using only a minor fraction of all possible combinations would suffice.
+Therefore to investigate the models built with various combinations of different number of explanatory variables the following approach is applied.
 For each size of the explanatory vector a random selection of the explanatory variables is used to train a model and obtain the model training and prediction errors.
 This procedure is repeated `N` times for each explanatory vector size to get multiple model realizations.
-For each model the model formula, size of the explanatory vector, prediction and training errors are stored in the data frame for the following analysis.
+For each model the model formula, size of the explanatory vector, prediction and training errors are stored in the final data frame for the following analysis.
 
 ```{r, cache=TRUE}
 possible_predictors <- head(names(alc), n = -3)
@@ -208,9 +208,9 @@ for(i in 30:1) {
 }
 ```
 
-As could be seen from the summary figure, the model errors tend become smaller with increasing the size of the explanatory vector (there `training` indicates training errors if `r TRUE` and prediction errors if `r FALSE`).
+As could be seen from the summary figure, the model errors tend to become smaller with increasing the size of the explanatory vector (there `training` indicates training errors if `r TRUE` and prediction errors if `r FALSE`).
 This could be attributed to the non-totality of the selected approach which makes it easier to draw a set of 'bad' variables if the explanatory vector is short.
-From the other size for long explanatory vectors there is a higher probability of getting 'good' variables from a random draw.
+From the other side for long explanatory vectors there is a higher probability of getting 'good' variables from a random draw.
 
 ```{r, fig.align='center', fig.width = 8, fig.asp = 0.5}
 mdf$size <- as.factor(mdf$size)
@@ -226,7 +226,7 @@ From all the tested models, the following give the lowest prediction error:
 mdf[mdf$training == FALSE,] %>% slice_min(error)
 ```
 
-The model with the the lowest prediction error (there the model with fewer explanatory variables was taken) shows some improvement in the prediction skill though still tend to give a considerable amount of false negative predictions according to the provided summary:
+The model with the the lowest prediction error (there the model with fewer explanatory variables was taken) shows some improvement in the prediction skill though still tends to give a considerable amount of false negative predictions according to the provided summary:
 ```{r}
 best_score <- mdf[mdf$training == FALSE,] %>% slice_min(error)
 best_formula <- as.formula(best_score$model[2])
