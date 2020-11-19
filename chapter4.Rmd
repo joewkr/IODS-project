@@ -143,7 +143,7 @@ Now an LDA model could be trained with the crime rate as a target variable:
 ```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
 lda.fit <- lda(crime ~ ., data = train)
 
-ggplot.lda.arrows <- function(p, x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+ggplot.lda.arrows <- function(p, x, myscale = 1, arrow_heads = 0.1, color = "red", choices = c(1,2)){
   heads <- coef(x)
   
   vals <- c(1:length(heads[,1]))
