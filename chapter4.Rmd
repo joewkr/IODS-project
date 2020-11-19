@@ -1,0 +1,324 @@
+# Clustering and classification
+```{r, include=FALSE}
+# Load all the libraries, but do not show them in the rendered version
+library(dplyr)
+library(MASS)
+library(corrplot)
+library(plotly)
+
+# Prescribe the seed for reproducible results
+set.seed(177)
+```
+
+*A short summary and things learned*
+
+- In this exercise we use the Boston data set to study the clustering and classification techniques
+- The crime rates in Boston suburbs are used to train an LDA classificator and predict the crime rates in the testing data set
+- The k-means algorithm is applied to show a case of missing information about the clusters
+- An approach for finding the optimal number of clusters for k-means is also investigated
+
+In this exercise we use one of the standard data sets provided with R-language within the `MASS` package:
+```{r}
+data("Boston")
+```
+
+The data set we use is called `Boston` and it provides information about the housing values in suburbs of Boston as well as quite an extensive set of additional information:
+```{r}
+str(Boston)
+```
+where
+
+
+- `crim` is per capita crime rate by town.
+- `zn` proportion of residential land zoned for lots over 25,000 sq.ft.
+- `indus` proportion of non-retail business acres per town.
+- `chas` Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).
+- `nox` nitrogen oxides concentration (parts per 10 million).
+- `rm` average number of rooms per dwelling.
+- `age` proportion of owner-occupied units built prior to 1940.
+- `dis` weighted mean of distances to five Boston employment centers.
+- `rad` index of accessibility to radial highways.
+- `tax` full-value property-tax rate per $10,000.
+- `ptratio` pupil-teacher ratio by town.
+- `black` $1000\cdot(\text{Bk} - 0.63)^2$ where `Bk` is the proportion of blacks by town.
+- `lstat` lower status of the population (percent).
+- `medv` median value of owner-occupied homes in $1000s.
+
+In total, the Bostan data sets has `r dim(Boston)[1]` observations of `r dim(Boston)[2]` individual variables.
+
+Having such a considerable number of different variables, it could be interesting to investigate their distributions and relationships between each other.
+First the estimated distributions for all the numeric variables are computed:
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.25}
+boston_labels <- c(
+    'crime rate'
+  , 'fraction of lots > 25000 sq.ft.'
+  , 'fraction of non-retail business land'
+  , 'NOx concentration'
+  , 'number of rooms'
+  , 'fraction of buldings from before 1940'
+  , 'distance to Boston employment centres'
+  , 'radial highway accessibility index'
+  , 'tax per $10000'
+  , 'pupil-teacher ratio'
+  , 'black/white prevalence'
+  , 'lower status percent'
+  , 'house median value'
+)
+
+i <- 1
+for(c in names(Boston)) {
+  if(c == 'chas') next
+  p <- ggally_densityDiag(Boston, mapping = aes_string(x=c)) +
+       xlab(boston_labels[i]) +
+       theme_bw() +  
+       theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=0.25)
+  
+  var_name <- paste('p', i, sep='')
+  assign(var_name, p)
+  i <- i + 1
+}
+
+grid.arrange(
+    p1, p2, p3, p4,   p5,  p6
+  , p7, p8, p9, p10, p11, p12, p13, nrow = 7, ncol=2)
+```
+These distributions provide some insight on the investigated data set.
+For example the crime rate is generally low and most suburbs have either prevalent black or prevalent non-black population.
+Towns with mixed population seem to be less common.
+A considerable number of buildings in Boston suburbs is built before 1940, there are not many big houses with a lot of rooms and house value does not vary too much from town to town.
+Another point to notice there is that several variables in the Boston data set show bimodal distribution.
+These variables are `indus` (fraction of non-retail business land), `rad` (radial highway accessibility index), and `tax` (tax per $10000) and they indicate some spatial irregularity in the Boston area.
+For example, it seems that there are locations with either good connections to radial highways or bad ones and not many locations with intermediate values of the accessibility index.
+
+To get an overview on the relations between different variables correlation coefficients could be studied.
+To get a more clear picture in case of a considerable number of individual variables correlations in graphical form seem to be a good choice.
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+cor_matrix <- cor(Boston) 
+cor_matrix <- cor_matrix %>% round(2)
+corrplot(cor_matrix, method="circle", tl.cex=0.6)
+```
+This plot shows that there is a number of variables in the Boston data set which show relatively strong correlations between each other.
+Some of these correlations follow my expectations, for example, the median price of buildings shows negative correlation with crime rate, or areas with higher fraction of non-retail business also have higher NOx levels.
+From the other side, some of the correlations are rather surprising to me, for example the number of rooms in a house seems to be negatively correlated with the property tax, though this correlation is weak.
+
+The summary of the Boston data set provided by the `summary` function gives some additional details one the values of each individual variable supporting the conclusions from the figures.
+```{r}
+summary(Boston)
+```
+One thing to note there is that all the variables have non-zero mean values.
+
+Before further processing of the data set it should be standardized because the original Boston data have variables with different units and scales which could affect the following analysis.
+To perform the standardization the R-function `scale` is applied:
+```{r}
+boston_scaled <- scale(Boston) %>% as.data.frame
+summary(boston_scaled)
+```
+
+note that after standardization procedure the mean values of all the variables in the data set are zero.
+This procedure also changes the standard deviations of all the variables to be equal to one.
+
+One of the tasks for this week exercise is to use linear discriminant analysis for classifying and predicting the crime rate in Boston suburbs.
+To do so, the standardized data set should be further processed.
+First, the crime rate (the `crim` variable), which is numeric in the original data set is converted to categorical form.
+Original variable is split in four categories representing low, medium low, medium high and high crime rate according to the quantiles of `crim` in the data set:
+```{r}
+bins <- quantile(boston_scaled$crim)
+labels <- c('low', 'med_low', 'med_high', 'high')
+crime <- cut(boston_scaled$crim, breaks = bins, label=labels, include.lowest = TRUE)
+
+boston_scaled <- select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Next, to be able to examine the predictive skill of the model, the full data set is split in two parts: training data set which consists of 80% of the original data and testing data containing the rest 20% of the data set.
+```{r}
+n <- nrow(boston_scaled)
+ind <- sample(n,  size = n * 0.8)
+
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+```
+
+Now an LDA model could be trained with the crime rate as a target variable:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+lda.fit <- lda(crime ~ ., data = train)
+
+ggplot.lda.arrows <- function(p, x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  
+  vals <- c(1:length(heads[,1]))
+  for(i in vals) {
+    p <- p + geom_segment(
+        x = 0
+      , y = 0
+      , xend = myscale * heads[i,choices[1]]
+      , yend = myscale * heads[i,choices[2]]
+      , color = color
+      , arrow = arrow(length = unit(arrow_heads, 'cm')))
+  
+    p <- p + annotate(
+        'text'
+      , x=myscale*(heads[i,choices[1]] + 0.1)
+      , y=myscale*(heads[i,choices[2]] + 0.1)
+      , label = row.names(heads)[i],
+      , col=color)
+  }
+  return(p)
+}
+
+lda.data <- data.frame(type = train[,1], lda = predict(lda.fit)$x)
+p <- ggplot(lda.data) +
+  geom_point(aes(lda.LD1, lda.LD2, color = train$crime), alpha=0.5, size = 2.5) 
+p <- ggplot.lda.arrows(p, lda.fit, myscale = 2) +
+  theme_bw() +
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank())
+
+p
+```
+The LDA plot shows a well separated group group of points corresponding to the high crime rate.
+It seems that the `rad` variable is the main contributor there and because `rad` corresponds to the accessibility index for the radial highways it means that areas with high accessibility tend to show higher crime rates.
+Other categories of crime rates form a somewhat merged group, although medium high rate could still be distinguished from low rate.
+
+Isolated location of the high crime cluster indicates that the trained model should have a considerable predictive skill.
+To investigate this, the testing part of the data set is used to make model predictions and compare them with actual values:
+```{r}
+correct_classes <- test$crime
+test <- select(test, -crime)
+
+lda.pred <- predict(lda.fit, newdata = test)
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+The cross tabulation table shows that indeed for high and medium high crime rates the LDA classificator has a considerable predictive skill with low amount of false negative predictions.
+For the medium low and low crime rates the models shows less skill.
+
+So far I used the available information about the crime rates to build an LDA model and predict the crime rates of the testing data set.
+But clustering information is not always available from a data set.
+When such information is missing a clustering algorithm could be applied to find potentially distinctive groups.
+To illustrate an application of such approach the full Boston data set is used for finding separate clusters in it.
+
+Again, as a first step the Boston data set is standardized, to remove different units of measure and normalize distances:
+```{r}
+data('Boston')
+boston_scaled <- Boston %>% scale %>% as.data.frame
+```
+In this part the k-means algorithm will be applied, which uses distances between individual observations and cluster centers.
+To show distances between the individual points of the Boston data set it could be passed as an argument to the `distance` function:
+```{r}
+dist_eucl <- dist(boston_scaled)
+summary(dist_eucl)
+```
+it could be seen that standardized distances are rather short and are not affected by the magnitude of values from the original data set.
+
+The k-means algorithm requires information about the number of clusters to be provided by user.
+Although giving an arbitrary selected number of cluster would often work:
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.0}
+km <-kmeans(boston_scaled, centers = 3)
+pairs(Boston, col = km$cluster)
+```
+estimating the optimal number of clusters is less trivial.
+The optimal number of classes could be estimated from the analysis of within-cluster-sum-of-squares or WCSS.
+When the value of WCSS is plotted against the total number of clusters, the optimal number of clusters would be indicated by a sharp drop in the WCSS value.
+
+In the following example the k-means algorithm is applied 20 times with different numbers of cluster and the WCSS plot is provided:
+```{r, fig.align='center', fig.width = 6, fig.asp = 0.5}
+k_max <- 20
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line') +
+  geom_point() +
+  geom_line() +
+  theme_bw() + 
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank())
+```
+
+as could be seen from the figure, the sharpest drop in the WCSS value happens with 2 clusters, which indicates that this would be the optimal number of clusters.
+
+Using this estimated optimal number of clusters the k-means algoritm would give the following result:
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.0}
+km <-kmeans(boston_scaled, centers = 2)
+pairs(boston_scaled, col = km$cluster)
+```
+
+from the summary figure it is not very clear what is the physical meaning (if any) behind the split parts of the data set.
+Estimated distributions by cluster give some idea on the meaning of two clusters (and here we use the original data set as having more clear physical meaning):
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.25}
+i <- 1
+boston_km <- data.frame(Boston, cluster=as.factor(km$cluster))
+
+for(c in names(boston_scaled)) {
+  if(c == 'chas') next
+  z <- 'cluster'
+  p <- ggally_densityDiag(boston_km, mapping = aes_string(x=c,color='cluster'), alpha=0.5) +
+       xlab(boston_labels[i]) +
+       theme_bw() +  
+       theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=0.25)
+  
+  var_name <- paste('p', i, sep='')
+  assign(var_name, p)
+  i <- i + 1
+}
+
+grid.arrange(
+    p1, p2, p3, p4,   p5,  p6
+  , p7, p8, p9, p10, p11, p12, p13, nrow = 7, ncol=2)
+```
+
+clusters seem to divide some variables in logical way, like cluster 1 showing higher taxes and older houses, while cluster 2 has lower highway accessibility index and lower NOx.
+
+Clusters found by the k-means algorithm could be used a target variable, as shown in the following example.
+There output from k-means with 4 clusters is added to the Boston data set to train an LDA model:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+data('Boston')
+boston_scaled <- Boston %>% scale %>% as.data.frame
+km <-kmeans(boston_scaled, centers = 4)
+boston_scaled_km <- data.frame(boston_scaled, cluster=km$cluster)
+
+lda_km.fit <- lda(cluster ~ ., data = boston_scaled_km)
+
+lda_km.data <- data.frame(type = boston_scaled[,1], lda = predict(lda_km.fit)$x)
+p <- ggplot(lda_km.data) +
+  geom_point(aes(lda.LD1, lda.LD2, color = as.factor(km$cluster)), alpha=0.5, size = 2.5) 
+p <- ggplot.lda.arrows(p, lda_km.fit, myscale = 2) +
+  theme_bw() +
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank())
+
+p
+```
+
+The summary figure shows that one of the cluster is associated with the `chas` variable and another with the `rad` variable while other clusters are less pronounced.
+This rather striking impact of `chas` could be caused to some extent by the nature of this variable because in the Boston data set `chas` is a dummy variable taking values of 0 or 1, which breaks the assumptions of LDA.
+
+Another approach for visualizing an LDA model is provided on the following figure:
+```{r, fig.align='center', fig.width = 8, fig.asp = 0.5}
+model_predictors <- select(train, -crime)
+
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+
+plot_ly(
+    x = matrix_product$LD1
+  , y = matrix_product$LD2
+  , z = matrix_product$LD3
+  , type= 'scatter3d'
+  , color=train$crime
+  , size=2
+  , mode='markers')
+```
+
+on this figure each axis corresponds to the individual linear discriminant and unlike the 2D plot this figure shows more complete information about the fitted LDA.
+
+A similar figure could be obtained by coloring points not by crime rate but rather by clusters found by the k-means algorithm:  
+```{r, fig.align='center', fig.width = 8, fig.asp = 0.5}
+km <-kmeans(select(train, -crime), centers = 4)
+plot_ly(
+    x = matrix_product$LD1
+  , y = matrix_product$LD2
+  , z = matrix_product$LD3
+  , type= 'scatter3d'
+  , color=as.factor(km$cluster)
+  , size=2
+  , mode='markers')
+```
+
+both figures show somewhat similar features with a distinctive separate group (which corresponds to high crime rates according to LDA) almost exclusively occupied by a single cluster.
+Patterns in the main group of points although showing some similarity are less obvious.
+
