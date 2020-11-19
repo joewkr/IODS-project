@@ -36,10 +36,14 @@ names(gii) <- c(
   , 'labM'         # Labour force participation rate, Male
   )
 
+# Add new variables:
+#   edu2Ratio --  ratio of Female and Male populations with secondary education
+#   labRatio  --  ratio of labour force participation of Female and Male population
 gii <- gii %>% mutate(
     edu2Ratio = edu2F/edu2M
   , labRatio  = labF/labM)
 
+# Merge the input data sets to produce the final output
 merged <- inner_join(hd, gii, by = 'country')
 dim(merged)
 
