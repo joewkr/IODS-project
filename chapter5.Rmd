@@ -1,0 +1,193 @@
+# Dimensionality reduction techniques
+```{r, include=FALSE}
+# Load all the libraries, but do not show them in the rendered version
+library(dplyr)
+library(corrplot)
+library(plotly)
+library(FactoMineR)
+library(grid)
+
+# Prescribe the seed for reproducible results
+set.seed(177)
+```
+
+*A short summary and things learned*
+
+- Two different methods for dimensionality reduction are investigated
+- Principal component analysis (PCA) is applied to the data set with numeric values
+- Multiple correspondence analysis (MCA) is applied to the qualitative survey
+- Effects of applying PCA to non-standardized data sets are studied
+
+In the first part of this week's exercise the principal component analysis (PCA) is applied to the data set, which provides information about the economic level, life quality and gender inequality in different countries.
+As the usual first step, the data set in question should be loaded from the file system:
+```{r}
+human <- read.csv('human.csv', row.names = 1)
+dim(human)
+str(human)
+```
+This data set includes information about `r dim(human)[1]` different countries for `r dim(human)[2]` variables which include the following parameters:
+
+- `edu2Ratio` is ratio of Female and Male populations with secondary education;
+- `labRatio` is ratio of labour force participation of Female and Male population;
+- `eduE` is expected years of education;
+- `lifeE` is life expectancy at birth;
+- `gni` is gross national income per capita;
+- `mmRatio` is maternal mortality ratio;
+- `adlBirthRate` is adolescent birth rate;
+- `parliamentF` is percent representation of female members of parliament.
+
+To get a better insight of the analyzed data set, probability density functions could be estimated for each of the variables:
+```{r warning=FALSE, fig.align='center', fig.width = 8, fig.asp = 0.9}
+
+get_mode <- function(x) {
+  d <- density(x)
+  d$x[which.max(d$y)]
+}
+
+i <- 1
+for(c in names(human)) {
+  m <- get_mode(human[[c]])[1]
+  if(c == 'labRatio') m_labRatio <- m
+  p <- ggally_densityDiag(human, mapping = aes_string(x=c)) +
+       geom_vline(xintercept = m) +
+       scale_x_continuous(sec.axis = dup_axis(breaks=m, name=NULL)) +
+       theme_bw() +  
+       theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=0.25)
+  
+  var_name <- paste('p', i, sep='')
+  assign(var_name, p)
+  i <- i + 1
+}
+
+grid.arrange(
+    p1, p2, p3, p4
+  , p5, p6, p7, p8, nrow = 4, ncol=2)
+
+```
+As could be seen from the figures, all the distributions have only one well-pronounced maximum.
+In general for most of the countries the ration between the female and male population receiving the secondary education is a bit less to one indicating the female population is on a par with male population.
+For the labor force participation ratio the situation is somewhat similar, though the maximum of the estimated distribution at `r format(m_labRatio, digits=3)` suggests that female part of the population is less involved in the labour force participation.
+Estimated distributions for the gross national income, maternal mortality and adolescent birth rate have low maximum probability values and long tail which could be caused by difference in development level between countries.
+
+To get a general overview of the studied data set the `pairs` function could be very useful:
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.0}
+pairs(human)
+```
+
+The figure indicates that some variables are strongly connected to each other, for example `eduE` and `lifeE`, but to get a better overview of the relations between variable a correlation plot would be more helpful:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+cor_matrix <- cor(human) 
+cor_matrix <- cor_matrix %>% round(2)
+corrplot(cor_matrix, method='circle', tl.cex=0.6)
+```
+The correlation plot shows that variables in the data set could be split in three groups.
+The first group includes `eduE`, `lifeE`, and `gni`; the second one includes `mmRatio`, and `adlBirthRate`; and the third group contains the rest of the variables.
+Apparently, the first and the second groups show strong negative correlation, i.e. for well developed countries with high live expectancy and expected years of education the maternal mortality and adolescent birth rate tends to be low and vice versa.
+The third group which includes `labRatio` and `parliamentF` show weak connection to other variables.
+
+As a first step PCA is applied to the original data set:
+```{r}
+pca_human_no_std <- prcomp(human)
+summary(pca_human_no_std)
+```
+```{r, include=FALSE}
+pca_human_no_std_s <- summary(pca_human_no_std)
+```
+
+As could be seen from the summary table the result of PCA is strongly affected by uneven scaling of the variables in the original data set.
+Even though the algorithm reports that the first and second principal components capture all the variability of the data set (with `r format(100*as.data.frame(pca_human_no_std_s$importance)[c('Proportion of Variance'),]$PC1, digits=4)`% for PC1 and `r format(100*as.data.frame(pca_human_no_std_s$importance)[c('Proportion of Variance'),]$PC2, digits=4)`% for PC2) it does not provide too much information for analysis.
+
+This issues could be illustrated by the following plot:
+```{r warning=FALSE, fig.align='center', fig.width = 6, fig.asp = 1.0, fig.cap='Biplot for PCA applied to the non-standardized data set with PC1 connected to gross national income and PC2 showing a weak connetction to the maternal mortality and adolsecent birth ratios.'}
+s <- summary(pca_human_no_std)
+pca_pr <- round(100*s$importance[2, ], digits = 3)
+pc_lab <- paste0(names(pca_pr), ' (', pca_pr, '%)')
+
+biplot(
+    pca_human_no_std
+  , choices = 1:2
+  , cex=c(0.8,1)
+  , col=c('grey40', 'deeppink2')
+  , xlab = pc_lab[1]
+  , ylab = pc_lab[2])
+```
+While it is clear that PC1 is connected to the gross national income, contributions from the other variables are so small that it's almost impossible to assess.
+Although, the figure itself suggests that PC2 is connected to such variables as `mmRatio` and `adlBirthRate`.
+
+To make the data set easier to analyze the standardization procedure should be applied.
+If PCA is applied to the standardized data set contributions from individual variables would have comparable weights:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0, fig.cap='Biplot for PCA applied to the standardized data set. PC1 is connected to the gross capital income, life excpectancy at birth, expected years of education, secondary education ratio of female and male population, maternal mortality ratio and adolescent birth rate. PC2 is connetcted to labrour force participation ration for female and male population and fraction of female members in parliament.'}
+human_std <- scale(human)
+pca_human_std <- prcomp(human_std)
+
+s <- summary(pca_human_std)
+pca_pr <- round(100*s$importance[2, ], digits = 3)
+pc_lab <- paste0(names(pca_pr), ' (', pca_pr, '%)')
+
+biplot(
+    pca_human_std
+  , choices = 1:2
+  , cex=c(0.8,1)
+  , col=c('grey40', 'deeppink2')
+  , xlab = pc_lab[1]
+  , ylab = pc_lab[2])
+```
+As could be seen from the updated figure, it is very different from the result obtained with non-standardized data set.
+The first analysis was strongly influenced by the large values of the `gni` variable which effectively hide the variability associated with other variables.
+PCA applied to the standardized data set show no such feature and has more clear connection between variables.
+The contributions of original variables provided on the figure for two almost orthogonal sets.
+One of them includes such variables as `edu2Ratio`, `eduE`, `lifeE`, `gni`, `mmRatio`, `adlBirthRate` while the second group consists of `labRatio` and `parliamentF` variables.
+This division between the contributing variables could be explained in the following way.
+The first principal component shows the general development level of the countries because it is influenced by such variables as gross national income or life expectancy at birth, which are high for the developed countries, and maternal mortality ratio which is expected to be high in non-developed countries.
+The second principal component which is connected to fraction of female members in parliament and participation in labour force of female population shows the involvement of the female population in the economic and political life.
+
+When a data set includes qualitative variables, multiple correspondence analysis (MCA) could be applied to investigate patterns in the data or reduce the dimensionality.
+In this exercise MCA is applied to the `tea` data set, which is provided as a part of the `FactoMineR` package:
+```{r}
+data('tea')
+
+tea <- tea %>% select(-age)
+
+dim(tea)
+str(tea)
+```
+
+As could be seen from the summary information, this data set provides `r dim(tea)[1]` individual observation of `r dim(tea)[2]` variables which represent a survey on tea.
+Respondents provided information about how they drink tea, their perception of tea products, and personal details.
+All the variables in the data set are factor variables except for `age`, which is excluded from the analysis.
+
+The general overview of the `tea` data set could be give by the following series of the bar plots:
+```{r, fig.align='center', fig.width = 8, fig.asp = 2.0}
+gather(tea) %>% ggplot(aes(value)) +
+  geom_bar() +
+  theme_bw() +
+  theme(
+      panel.grid.major=element_blank()
+    , panel.grid.minor=element_blank()
+    , axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  facet_wrap('key', scales = 'free')
+```
+This figure provides some interesting details about the tea drinking habits of respondents.
+For example, most of the drink tea at home and do not add lemon or milk. 
+
+While it is possible to apply MCA to the whole data set, it would be difficult to interpret the result due to a large number of individual parameters.
+Therefore, in this exercise MCA is applied to a small selected subset of the `tea` variables:
+```{r}
+keep_columns <- c('Tea', 'work', 'How', 'resto', 'where', 'price')
+tea_sel <- select(tea, one_of(keep_columns))
+
+mca <- MCA(tea_sel, graph = FALSE)
+```
+
+The summary of the MCA results could be provided with a usual biplot figure:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+plot(mca, invisible=c('ind'), habillage = 'quali') 
+```
+The figure suggests that the x-axis is connected to the tea type and the place where a respondent prefers to drink tea, while the y-axis seems to be related to the place where a respondent buys their tea and its price.
+
+Adding the individual responses to the plot could reveal some patterns in the data set:
+```{r, fig.align='center', fig.width = 6, fig.asp = 1.0}
+plot(mca, label='var', habillage = 'quali') 
+```
+According to the figure it seems that green tea is not in great favor and respondents prefer to drink black or Earl Grey.
+Although it seems that respondents who buy more expensive tea in tea shops show some tendency towards drinking green tea.
