@@ -36,7 +36,7 @@ This data set includes information about `r dim(human)[1]` different countries f
 - `adlBirthRate` is adolescent birth rate;
 - `parliamentF` is percent representation of female members of parliament.
 
-To get a better insight of the analyzed data set, probability density functions could be estimated for each of the variables:
+To get a better summary of the analyzed data set, probability density functions could be estimated for each of the variables:
 ```{r warning=FALSE, fig.align='center', fig.width = 8, fig.asp = 0.9}
 
 get_mode <- function(x) {
@@ -97,7 +97,7 @@ pca_human_no_std_s <- summary(pca_human_no_std)
 As could be seen from the summary table the result of PCA is strongly affected by uneven scaling of the variables in the original data set.
 Even though the algorithm reports that the first and second principal components capture all the variability of the data set (with `r format(100*as.data.frame(pca_human_no_std_s$importance)[c('Proportion of Variance'),]$PC1, digits=4)`% for PC1 and `r format(100*as.data.frame(pca_human_no_std_s$importance)[c('Proportion of Variance'),]$PC2, digits=4)`% for PC2) it does not provide too much information for analysis.
 
-This issues could be illustrated by the following plot:
+This issue could be illustrated by the following plot:
 ```{r warning=FALSE, fig.align='center', fig.width = 6, fig.asp = 1.0, fig.cap='Biplot for PCA applied to the non-standardized data set with PC1 connected to gross national income and PC2 showing a weak connetction to the maternal mortality and adolsecent birth ratios.'}
 s <- summary(pca_human_no_std)
 pca_pr <- round(100*s$importance[2, ], digits = 3)
@@ -135,11 +135,11 @@ biplot(
 As could be seen from the updated figure, it is very different from the result obtained with non-standardized data set.
 The first analysis was strongly influenced by the large values of the `gni` variable which effectively hide the variability associated with other variables.
 PCA applied to the standardized data set show no such feature and has more clear connection between variables.
-The contributions of original variables provided on the figure for two almost orthogonal sets.
+The contributions of original variables provided on the figure could be split in two almost orthogonal sets.
 One of them includes such variables as `edu2Ratio`, `eduE`, `lifeE`, `gni`, `mmRatio`, `adlBirthRate` while the second group consists of `labRatio` and `parliamentF` variables.
 This division between the contributing variables could be explained in the following way.
 The first principal component shows the general development level of the countries because it is influenced by such variables as gross national income or life expectancy at birth, which are high for the developed countries, and maternal mortality ratio which is expected to be high in non-developed countries.
-The second principal component which is connected to fraction of female members in parliament and participation in labour force of female population shows the involvement of the female population in the economic and political life.
+The second principal component, which is connected to the fraction of female members in parliament and participation in labour force of female population, shows the involvement of the female population in the economic and political life.
 
 When a data set includes qualitative variables, multiple correspondence analysis (MCA) could be applied to investigate patterns in the data or reduce the dimensionality.
 In this exercise MCA is applied to the `tea` data set, which is provided as a part of the `FactoMineR` package:
@@ -156,8 +156,8 @@ As could be seen from the summary information, this data set provides `r dim(tea
 Respondents provided information about how they drink tea, their perception of tea products, and personal details.
 All the variables in the data set are factor variables except for `age`, which is excluded from the analysis.
 
-The general overview of the `tea` data set could be give by the following series of the bar plots:
-```{r, fig.align='center', fig.width = 8, fig.asp = 2.0}
+The general overview of the `tea` data set could be given by the following series of the bar plots:
+```{r warning=FALSE, fig.align='center', fig.width = 8, fig.asp = 2.0}
 gather(tea) %>% ggplot(aes(value)) +
   geom_bar() +
   theme_bw() +
@@ -167,8 +167,8 @@ gather(tea) %>% ggplot(aes(value)) +
     , axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   facet_wrap('key', scales = 'free')
 ```
-This figure provides some interesting details about the tea drinking habits of respondents.
-For example, most of the drink tea at home and do not add lemon or milk. 
+This figure provides some interesting details about the tea drinking habits of the respondents.
+For example, most of them drink tea at home and do not add lemon or milk. 
 
 While it is possible to apply MCA to the whole data set, it would be difficult to interpret the result due to a large number of individual parameters.
 Therefore, in this exercise MCA is applied to a small selected subset of the `tea` variables:
