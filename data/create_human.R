@@ -2,6 +2,7 @@
 # Preprocess the input data set for exercise 5 of the IODS course, part 1
 
 library(dplyr)
+library(stringr)
 
 url_prefix <- 'http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets'
 hd  <- read.csv(paste(url_prefix, 'human_development.csv', sep='/'), stringsAsFactors = F)
@@ -47,4 +48,30 @@ gii <- gii %>% mutate(
 merged <- inner_join(hd, gii, by = 'country')
 dim(merged)
 
-write.csv(merged, file='data/human.csv', row.names=FALSE)
+# Transform GNI to numeric form
+merged$gni <- merged$gni %>% str_replace(pattern=",", replace ="") %>% as.numeric
+
+# Drop last 7 obs because they represent regions and not individual countries
+last <- nrow(merged) - 7
+merged <- merged[1:last, ]
+
+columns_to_keep <- c(
+    'country'
+  , 'edu2Ratio'
+  , 'labRatio'
+  , 'eduE'
+  , 'lifeE'
+  , 'gni'
+  , 'mmRatio'
+  , 'adlBirthRate'
+  , 'parliamentF'
+)
+
+# Select only the needed variables and drop NA obs
+merged <- merged %>% select(one_of(columns_to_keep)) %>% filter(complete.cases(merged))
+
+# Set the column names
+rownames(merged) <- merged$country
+merged <- merged %>% select(-country)
+
+write.csv(merged, file='human.csv', row.names=TRUE)
