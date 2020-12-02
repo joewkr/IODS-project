@@ -1,0 +1,222 @@
+# Analysis of longitudinal data
+```{r, include=FALSE}
+# Load all the libraries, but do not show them in the rendered version
+library(dplyr)
+library(corrplot)
+library(plotly)
+library(grid)
+
+# Prescribe the seed for reproducible results
+set.seed(177)
+```
+
+*A short summary and things learned*
+
+- TODO
+
+The last exercise is devoted to the analysis of longitudinal data, or in other words, data where individual observations are not independent.
+The first example in this exercise shows the graphical and summary observation approaches to analysisng such data sets.
+As usual, work starts from loading the data set from the file system:
+```{r}
+rats <- read.csv('rats.csv')
+rats$id    <- factor(rats$id)
+rats$group <- factor(rats$group, labels = c('G1', 'G2', 'G3'))
+
+dim(rats)
+str(rats)
+```
+This data set provides information about `r max(as.integer(rats$id))` rats divided into three separate groups and the target variable is the rat weight which was measured for each individual rat over a period of `r max(rats$time)` days.
+
+To get a better overview of the data set and investigate potential differences between the groups, plotting the data set could be a very useful start:
+```{r, fig.align='center', fig.width = 8}
+ggplot(rats, aes(x = time, y = weight, col = id)) +
+  geom_line() +
+  scale_color_manual(values=rep("#000000", times = max(rats$id %>% as.integer))) +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ group, labeller = label_both) +
+  scale_y_continuous(limits = c(min(rats$weight), max(rats$weight))) +
+  theme_bw() +  
+  theme(
+      panel.grid.major=element_blank()
+    , panel.grid.minor=element_blank()
+    , aspect.ratio=1.5
+    , legend.position = "none")
+```
+This figure provides some interesting details about the data set.
+For example, group 1 is much larger than other groups (each of them contains only four individual rats).
+Weight of the rats in group 1 is lower compared to group 2 and group 3, but between group 2 and 3 the difference in weight is much smaller.
+Group 3 tends contain heavy rats although the heaviest individual in this data set is member of the group 2.
+
+The next step is to prepare the summary measure.
+For this step, it is important to pick the correct measure because different research questions would imply different measures.
+In this exercise, to keep the things simple the question of interest is 'whether the rats in different groups have significantly different weight?' and the summary measure is the simple mean.
+Another research question, for example, 'whether rats in different groups show significant difference in weight fain rate?' would require a different measure.
+
+To build the overall mean of the data set and compute the standard error of mean, the standard approach is applied:
+```{r warning=FALSE, fig.align='center', fig.width = 8}
+n <- rats$time %>% unique() %>% length()
+
+rats_s <- rats %>%
+  group_by(group, time) %>%
+  summarise( mean = mean(weight), se = sd(weight)/sqrt(n) ) %>%
+  ungroup()
+```
+There it should be noted that since the complete data set is available and all rats were measured the same number of times, `n` could be calculated prior to grouping to simplify the code.
+
+After calculating the summary measure, the significance of the weight difference in different groups could be estimated in graphical form:
+```{r warning=FALSE, fig.align='center', fig.width = 8}
+ggplot(rats_s, aes(x = time, y = mean, col = group)) +
+  geom_line() +
+  geom_point(size=1) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=0.3) +
+  scale_y_continuous(name = "mean(weight) +/- se(weight)") +
+  theme_bw() +  
+  theme(
+      panel.grid.major=element_blank()
+    , panel.grid.minor=element_blank()
+    , aspect.ratio=0.5
+    , legend.position = 'bottom')
+  
+```
+The figure shows that rats group 1 is most likely significantly differ in weight from members of the members of groups 2 and 3.
+For the difference between the last two groups, the error bars are rather close, but do not overlap indicating that there could be some significant difference, though this assumption is rather marginal.
+Also it should be noted that the second group has the largest standard error, which could be explained by the presence of the heaviest rat in this group.
+
+Another approach for investigating the summary measure is using the box plot (here the initial or baseline rat weight is not included, leaving only the weights measured througout the study):
+```{r warning=FALSE, message=FALSE, fig.align='center', fig.width = 8}
+rats_ds <- rats %>%
+  filter(time > 1) %>%
+  group_by(group, id) %>%
+  summarise( mean=mean(weight)) %>%
+  ungroup()
+
+ggplot(rats_ds, aes(x = group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  theme_bw() +  
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=1.5) +
+  scale_y_continuous(name = "mean(weight), days 1-64")
+```
+This figure again suggests a significant difference of the first group from the two remaining groups in the investigated data set.
+Also, it should be noted that each group has one outlier member and the standard approach would be to remove these outliers from the data set before proceeding.
+Although, taking into account that groups 2 and 3 contain only four individuals each, removing any rat seems rather impractical and is not done in this exercise.
+
+The graphical approach suggests some significant differences between the individual groups, but to get quantitative measure significance tests could be applied, for example the t-test.
+But because the t-test is the two-sample test and the `rats` data set has three groups, the pairwise test is applied:
+```{r}
+stats::pairwise.t.test(rats_ds$mean, rats_ds$group)
+```
+The result of the t-test suggests that the difference in rats weight between groups 2 and 3 is not statistically significant, unlike for the other combinations of group pairs.
+
+Another approach to testing the significance in weight difference could be using the analysis of variance technique.
+The following example uses the preconditioned linear model to illustrate that initial weight measurement has a strong connection with the mean measure:
+```{r}
+baseline <- rats %>% filter(time == 1)
+rats_ds_precond <- rats_ds %>% mutate(baseline = baseline$weight)
+m <- lm(mean ~ baseline + group, data = rats_ds_precond)
+
+summary.aov(m, split = list(group = list(G2=1,G3=2)))
+```
+Again the test suggests that information about rats being members of the group 3 is less useful in the built model.
+
+
+Another approach in analyzing the longitudinal data sets is using a linear mixed effects model.
+To illustrate this approach a different data set is studied.
+This data set provides information about 40 subjects participating in two treatment groups.
+The variable of interest in this data set is the rating on the brief psychiatric rating scale (BPRS), which is used to evaluate patients suspected of having schizophrenia.
+
+The usual first step is reading the data set, although in this case it should be noted that individual subjects in the data set have assigned with id-numbers from 1 to 20 for both treatment types.
+To distinguish the subjects of the second treatment type their subject id-numbers are modified by adding the number 20:
+```{r}
+bprs <- read.csv('bprs.csv')
+
+bprs$subject <- if_else(bprs$treatment == 2, as.integer(bprs$subject + 20), bprs$subject)
+
+bprs$treatment <- factor(bprs$treatment)
+bprs$subject   <- factor(bprs$subject)
+
+dim(bprs)
+str(bprs)
+```
+
+The structure of the data set could be shown by the following figure:
+```{r, fig.align='center', fig.width = 8}
+ggplot(bprs, aes(x = week, y = bprs, group = subject)) +
+  geom_line() +
+  scale_x_continuous(name = "Time (weeks)") +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_y_continuous(name = "BPRS") +
+  theme(legend.position = "top") +
+  theme_bw() +  
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), aspect.ratio=1.5)
+```
+This figure suggests stat both treatment types have rather similar BPRS and can not be easily distinguished.
+
+A naïve approach to build a statistical model for this data set would be using a linear regression model:
+```{r}
+m1 <- lm(bprs ~ week + treatment, data = bprs)
+summary(m1)
+```
+This model assumes the individual observations are independent, which is not true in case of the `pbrs` data set and results in non-optimal fit, as will be shown later.
+
+Another option for this data set could be introducing the effects of random intercept and random slope, which allow intercept and slope to differ for each subject in the data set.
+The following snippet illustrates building the random intercept model:
+```{r}
+m2 <- lme4::lmer(bprs ~ week + treatment + (1|subject), data = bprs, REML = FALSE)
+summary(m2)
+```
+and this snippet build the random intercept and slope model:
+```{r}
+m3 <- lme4::lmer(bprs ~ week + treatment + (week|subject), data = bprs, REML = FALSE)
+summary(m3)
+```
+
+Another level of complexity, which could be added to the model, is interaction between explanatory variables.
+In this example interaction is assumed between `week` and `treatment`, which is a bit artificial because treatment does not change from week to week.
+```{r}
+m4 <- lme4::lmer(bprs ~ week*treatment + (week|subject), data = bprs, REML = FALSE)
+summary(m4)
+```
+
+To study the difference between the obtained models the analysis of variance technique is applied:
+```{r}
+anova(m2,m3)
+```
+As could be seen from the output the random intercept and slope model (`m3`) significantly differs from the random intercept model (m2), with significance level $\alpha=0.05$,
+From the other side, difference between the model with interactions (`m4`) from the random intercept and slope model (`m3`) is less pronounced and not statistically significant:
+```{r}
+anova(m3,m4)
+```
+
+To illustrate how including the random effects could improve a linear model the summary figures showing the fit obtained with naïve linear regression model and fit with random intercept and slope model including interactions is provided:
+```{r, fig.align='center', fig.width = 8, fig.asp = 1.0, fig.cap='Fit of obtained with a simple linear regression model (blue), fit obtained with regression model including linear mixed effects (red), observations of the PBRS rating for the individual subjects of the data set (black).'}
+fitted1 <- fitted(m1)
+fitted4 <- fitted(m4)
+
+bprs <- bprs %>% mutate(fitted_lm = fitted1, fitted = fitted4)
+
+plot_fitted <- function(plot_treatment = 1){
+  ggplot(bprs %>% filter(treatment == plot_treatment), aes(x = week, group = subject)) +
+    geom_line(aes(y=fitted, color='red')) +
+    geom_line(aes(y=fitted_lm, color='blue')) +
+    geom_line(aes(y=bprs, color='black')) +
+    facet_wrap(. ~ subject, labeller = label_both) +
+    scale_x_continuous(name = "Time (weeks)") +
+    scale_y_continuous(name = "BPRS") +
+    theme_bw() +
+    theme(
+        panel.grid.major=element_blank()
+      , panel.grid.minor=element_blank()
+      , legend.position = 'bottom'
+      , aspect.ratio=0.5) +
+    scale_colour_manual(
+         name = NULL
+      ,  values = c('black'='black','blue'='blue','red'='red')
+      ,  labels = c('observed', 'lm', 'lmer')) +
+    ggtitle(paste('Treatment', plot_treatment, sep = ' '))
+}
+
+plot_fitted(plot_treatment = 1)
+plot_fitted(plot_treatment = 2)
+```
+It is clear from the figures that simple linear regression model is unable to give an adequate fit, while the model including linear mixed effect show much better fit.
