@@ -12,10 +12,11 @@ set.seed(177)
 
 *A short summary and things learned*
 
-- TODO
+- Two different approaches for investigating the longitudinal data are studied: summary measures and mixed linear effects models
+- Inefficiency of simple linear regression models when dealing with longitudinal data is shown
 
 The last exercise is devoted to the analysis of longitudinal data, or in other words, data where individual observations are not independent.
-The first example in this exercise shows the graphical and summary observation approaches to analysisng such data sets.
+The first example in this exercise shows the graphical and summary observation approaches to analyzing such data sets.
 As usual, work starts from loading the data set from the file system:
 ```{r}
 rats <- read.csv('rats.csv')
